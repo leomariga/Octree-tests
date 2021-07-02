@@ -1,6 +1,9 @@
 import open3d as o3d
 import numpy as np
-
+from pympler import asizeof
+import sys
+import pickle
+import cloudpickle
 
 def getOctreeStructure(pcd):
     octree = o3d.geometry.Octree(max_depth=5)
@@ -8,6 +11,18 @@ def getOctreeStructure(pcd):
     return octree
     #pcd.scale(1 / np.max(pcd.get_max_bound() - pcd.get_min_bound()),
     #          center=pcd.get_center())
+
+def get_voxel_vis_from_octree(octree):
+    print("converteu")
+    voxel_grid = octree.to_voxel_grid()
+    octree_copy = voxel_grid.to_octree(max_depth=5)
+    print("Printing octree")
+    o3d.visualization.draw_geometries([octree])
+    print("Printing voxelgrid")
+    o3d.visualization.draw_geometries([voxel_grid])
+    print("Printing octree again")
+    o3d.visualization.draw_geometries([octree_copy])
+    return octree.to_voxel_grid()
 
 def getVoxelStructure(pcd):
     return o3d.geometry.VoxelGrid.create_from_point_cloud(pcd, voxel_size=0.05)
@@ -71,4 +86,21 @@ o3d.visualization.draw_geometries([voxel_grid])
 
 octree = getOctreeStructure(pcd)
 o3d.visualization.draw_geometries([octree])
+
 octree.traverse(f_traverse)
+
+o3d.io.write_point_cloud("pointcloud.pcd", pcd)
+o3d.io.write_voxel_grid("voxel_grid.ply", voxel_grid)
+o3d.io.write_octree("octree.json", octree)
+
+pcd2 = o3d.io.read_point_cloud("pointcloud.pcd")
+voxel_grid_2 = o3d.io.read_voxel_grid("voxel_grid.ply")
+octree2 = o3d.io.read_octree("octree.json")
+
+o3d.visualization.draw_geometries([pcd2])
+o3d.visualization.draw_geometries([voxel_grid_2])
+o3d.visualization.draw_geometries([octree2])
+
+print("Memoria gasta pcd: ", o3d.io.get_mem_pcd(pcd))
+print("Memoria gasta voxel_grid: ", o3d.io.get_mem_voxel_grid(voxel_grid))
+print("Memoria gasta octree: ", o3d.io.get_mem_octree(octree))
