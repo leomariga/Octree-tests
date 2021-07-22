@@ -1,20 +1,51 @@
 import open3d as o3d
 import numpy as np
-from pympler import asizeof
-import sys
-import pickle
-import cloudpickle
 
-def get_mem_voxel_grid(voxel_grid):
-    qtd_voxels = len(voxel_grid.get_voxels())
-    info =	{"qtd_voxels": qtd_voxels,
-            "mem_size": 16+qtd_voxels*23,
-            "mem_size_colorless": 16+qtd_voxels*20
-            }
+def get_mem_voxel_grid(voxel_grid, method="open3d"):
+    #memq = voxel_grid.get_mem_size()
+    if method == "open3d":
+        qtd_voxels = len(voxel_grid.get_voxels())
+        qtd_bucket = int(qtd_voxels/0.7)
+        info =	{"qtd_voxels": qtd_voxels,
+                "qtd_buckets": qtd_bucket,
+                "grid_size": 144,
+                "bucket_size": qtd_bucket*16,
+                "voxel_size": qtd_voxels*23,
+                "mem_size":qtd_voxels*23 + qtd_bucket*16 +144,
+                "mem_size_colorless":qtd_voxels*20 + qtd_bucket*16 +144
+                }
+    else:
+        grid_size = np.asarray(voxel_grid.get_max_bound()-voxel_grid.get_min_bound())
+        qtd_cells_space = np.ceil(grid_size/voxel_grid.voxel_size)
+        qtd_cells = qtd_cells_space[0]*qtd_cells_space[1]*qtd_cells_space[2]
+        info =	{"qtd_voxels": qtd_cells,
+                "mem_size":qtd_cells*16 + 24,
+                "mem_size_colorless":qtd_cells*13 + 24,
+                }
     return info
 
+def get_mem_feature(feature):
+    if feature == "plane":
+        info =	{"mem_size": 35,
+                 "mem_size_colorless": 32
+                }
+    elif feature == "cylinder":
+        info =	{"mem_size": 23,
+                 "mem_size_colorless": 20
+                }
+    elif feature == "cuboid":
+        info =	{"mem_size": 27,
+                 "mem_size_colorless": 24
+                }
+    elif feature == "sphere":
+        info =	{"mem_size": 19,
+                 "mem_size_colorless": 16
+                }
+    return info
+
+
 def get_mem_pcd(pcd):
-    info =	{"qtd_points": qtd_root,
+    info =	{"qtd_points": np.asarray(pcd.points).shape[0],
             "mem_size": np.asarray(pcd.points).shape[0]*15,
             "mem_size_colorless": np.asarray(pcd.points).shape[0]*12
             }
@@ -22,7 +53,7 @@ def get_mem_pcd(pcd):
 
 
 
-def get_mem_octree(octree, method_1=True):
+def get_mem_octree(octree, method="open3d"):
     global qtd_root
     global qtd_internal_node
     global qtd_leaf_node
@@ -49,12 +80,12 @@ def get_mem_octree(octree, method_1=True):
             "qtd_internal_node": qtd_internal_node,
             "qtd_leaf_node": qtd_leaf_node
             }
-    if method_1:
+    if method == "open3d" :
         info["mem_size"] = qtd_root*84 + qtd_internal_node*64 + qtd_leaf_node*3
         info["mem_size_colorless"] = qtd_root*84 + qtd_internal_node*64 + qtd_leaf_node*1
     else:
         info["mem_size"] = qtd_root*80 + qtd_internal_node*88 + qtd_leaf_node*27
-        info["mem_size_colorless"] = qtd_root*80 + qtd_internal_node*88 + qtd_leaf_node*27
+        info["mem_size_colorless"] = qtd_root*80 + qtd_internal_node*88 + qtd_leaf_node*1
     return info
 
 def getOctreeStructure(pcd):
@@ -96,11 +127,16 @@ o3d.visualization.draw_geometries([pcd])
 o3d.visualization.draw_geometries([voxel_grid])
 o3d.visualization.draw_geometries([octree])
 
-print("Get voxels:")
-print(len(voxel_grid.get_voxels()))
+# print("Get voxels:")
+# print(len(voxel_grid.get_voxels()))
 
-print("size pcd: ", get_mem_pcd(pcd))
-print("size octree: ", get_mem_octree(octree))
+print("size pcd: ", get_mem_pcd(pcd)['mem_size']/1024)
+
+print("size voxel grid (traditional): ", get_mem_voxel_grid(voxel_grid,"traditional")['mem_size']/1024)
+print("size voxel grid (open3d): ", get_mem_voxel_grid(voxel_grid,"open3d")['mem_size']/1024)
+print("size octree (traditional): ", get_mem_octree(octree, "traditional")['mem_size']/1024)
+print("size octree (open3d): ", get_mem_octree(octree, "open3d")['mem_size']/1024)
+
 # o3d.io.write_point_cloud("pointcloud.pcd", pcd)
 # o3d.io.write_voxel_grid("voxel_grid.ply", voxel_grid)
 # o3d.io.write_octree("octree.json", octree)
